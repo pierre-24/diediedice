@@ -65,6 +65,59 @@ class Die {
     }
 }
 
+class ExplodingDie extends Die {
+    // an exploding die
+    constructor(maximum, maxExplosion=3){
+        super(maximum);
+        this.maxExplosion = maxExplosion;
+    }
+
+    max() {
+        return this.maxExplosion * this.maximum;
+    }
+
+    roll(n=1) {
+        function r(m, n) {
+            let rf = 0;
+            for (let i=0; i < n; i++) {
+                let ri = Math.floor(Math.random() * (m)) + 1;
+                rf += ri;
+                if(ri !== m)
+                    break;
+            }
+
+            return rf;
+        }
+
+        if (n > 1)
+            return [...Array(n)].map(_ => r(this.maximum, this.maxExplosion));
+        else
+            return r(this.maximum, this.maxExplosion);
+    }
+
+    all_events() {
+        let events = [];
+
+        function recurse(i, m, r) {
+            if(i > 0) {
+                [...Array(m).keys()].map(j => j + 1).forEach((v) => {
+                    if(v === m) {
+                        recurse(i - 1, m, r + v);
+                    } else {
+                        [...Array(Math.pow(m, i - 1))].map(_ => events.push(r + v)); // this event his `i`-fold more probable
+                    }
+                });
+            } else {
+                events.push(r);
+            }
+        }
+
+        recurse(this.maxExplosion, this.maximum, 0);
+
+        return events;
+    }
+}
+
 class Modifier {
     // a simple modifier
     constructor(value){
@@ -197,5 +250,5 @@ class WorstOfPool extends SubPool {
     }
 }
 
-let pool1 = new BestOfPool([new Die(12), new Die(12)], 1);
-console.log(pool1.roll(5));
+let pool1 = new ExplodingDie(4); // new BestOfPool([new Die(12), new Die(12)], 1);
+console.log(pool1.histogram().density);
