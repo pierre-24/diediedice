@@ -14,6 +14,8 @@ Object.defineProperties(Array.prototype, {
 });
 
 class Histogram {
+    // a histogram for integer values, contains bins for `this.min` to `this.max`.
+
     constructor(values) {
         this.rawValues = values;
         this.min = this.rawValues.min();
@@ -28,6 +30,9 @@ class Histogram {
 
         this.density = {};
         Object.keys(this.histogram).forEach(k  => this.density[k] = this.histogram[k] / this.n);
+
+        this.cumulativeDensity = {};
+        Object.keys(this.density).forEach(k  => this.cumulativeDensity[k] = this.density[k] + (parseInt(k) === this.min ? 0 : this.cumulativeDensity[k-1]));
     }
 
     roll(n=1) {
@@ -56,37 +61,51 @@ function sumOfRolls(rolls) {
 
 class Die {
     // a simple die
+
     constructor(maximum){
         this.maximum = maximum;
     }
 
     min() {
+        // minimum value that the die can roll
+
         return 1;
     }
 
     max() {
+        // maximum value that the die can roll
+
         return this.maximum;
     }
 
     roll() {
+        // roll the die, result is in [min,max]
+
         return new RollResult(Math.floor(Math.random()*(this.maximum)) + 1, this);
     }
 
     all_events() {
+        // get all possible value
+
         return [...Array(this.maximum).keys()].map(i => i + 1);
     }
 
     histogram() {
+        // get the histogram corresponding to all events
+
         return new Histogram(this.all_events());
     }
 
     repr() {
+        // get the representation, for debugging purpose
+
         return `d${this.maximum}`;
     }
 }
 
 class ExplodingDie extends Die {
     // an exploding die
+
     constructor(maximum, maxExplosion=3){
         super(maximum);
         this.maxExplosion = maxExplosion;
@@ -141,6 +160,7 @@ class ExplodingDie extends Die {
 
 class Modifier {
     // a simple modifier
+
     constructor(value){
         this.value = value;
     }
@@ -172,6 +192,7 @@ class Modifier {
 
 class Pool  {
     // a pool of dice/pools
+
     constructor(pool) {
         this.pool = pool;
     }
@@ -230,6 +251,7 @@ class SubPoolSizeError extends Error {
 
 class SubPool extends Pool {
     // select `n` results out of pool, using `selector`
+
     constructor(pool, n, selector) {
         if(pool.length <= n)
             throw new SubPoolSizeError();
@@ -367,6 +389,7 @@ class Parser {
 
     number() {
         // NUMBER := INT*
+
         if(this.currentToken.type !== TokenTypes.INT)
             throw new ParseError(this.currentToken, `expected INT`);
 
@@ -404,6 +427,7 @@ class Parser {
 
     subpool() {
         // SUBPOOL := ('b' | 'w') NUMBER? 'o' LPAR POOL RPAR
+
         if (this.currentToken.value !== 'b' && this.currentToken.value !== 'w')
             throw new ParseError(this.currentToken, `expected 'b' or 'w'`);
 
@@ -479,9 +503,4 @@ class Parser {
             return [new Modifier(n)];
         }
     }
-
 }
-
-let p = new Parser('bo(2d12) + ').pool();
-let rolls = p.rolls(3);
-console.log(p.repr(), rolls, sumOfRolls(rolls[0]), sumOfRolls(rolls[1]), sumOfRolls(rolls[2]));
