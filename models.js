@@ -35,6 +35,25 @@ class Histogram {
     }
 }
 
+class RollResult {
+    // The result of a roll
+
+    constructor(value, die) {
+        this.value = value;
+        this.die = die;
+    }
+}
+
+function sumOfRolls(rolls) {
+    let sum = 0;
+    if(rolls instanceof Array) {
+        rolls.forEach(roll => sum += sumOfRolls(roll));
+    } else
+        sum += rolls.value;
+
+    return sum;
+}
+
 class Die {
     // a simple die
     constructor(maximum){
@@ -49,11 +68,8 @@ class Die {
         return this.maximum;
     }
 
-    roll(n=1) {
-        if (n > 1)
-            return [...Array(n)].map(_ => Math.floor(Math.random()*(this.maximum)) + 1);
-        else
-            return Math.floor(Math.random()*(this.maximum)) + 1;
+    roll() {
+        return new RollResult(Math.floor(Math.random()*(this.maximum)) + 1, this);
     }
 
     all_events() {
@@ -80,7 +96,7 @@ class ExplodingDie extends Die {
         return this.maxExplosion * this.maximum;
     }
 
-    roll(n=1) {
+    roll() {
         function r(m, n) {
             let rf = 0;
             for (let i=0; i < n; i++) {
@@ -90,13 +106,10 @@ class ExplodingDie extends Die {
                     break;
             }
 
-            return rf;
+            return  rf;
         }
 
-        if (n > 1)
-            return [...Array(n)].map(_ => r(this.maximum, this.maxExplosion));
-        else
-            return r(this.maximum, this.maxExplosion);
+        return new RollResult(r(this.maximum, this.maxExplosion), this);
     }
 
     all_events() {
@@ -140,11 +153,8 @@ class Modifier {
         return this.value;
     }
 
-    roll(n=1) {
-        if(n > 1)
-            return [...Array(n)].map(_ => this.value);
-        else
-            return this.value;
+    roll() {
+        return new RollResult(this.value, this);
     }
 
     all_events() {
@@ -178,8 +188,12 @@ class Pool  {
         return maximum;
     }
 
-    roll(n=1) {
-        return [...Array(n)].map(_ => this.pool.map(die => die.roll()));
+    roll() {
+        return this.pool.map(die => die.roll());
+    }
+
+    rolls(n=1) {
+        return [...Array(n)].map(_ => this.roll());
     }
 
     all_events() {
@@ -237,13 +251,7 @@ class SubPool extends Pool {
     }
 
     roll(n=1) {
-        if(n === 1) {
-            return this.select(this.n, this.pool.map(die => die.roll()));
-        } else {
-            return [...Array(n)].map(_ => {
-                return this.select(this.n, this.pool.map(die => die.roll()));
-            });
-        }
+        return this.select(this.n, this.pool.map(die => die.roll()));
     }
 
     all_events(){
@@ -310,8 +318,10 @@ class Token {
 }
 
 class ParseError extends Error {
-    constructor(what) {
-        super(what);
+    constructor(token, what) {
+        super(what + ` @ ${token.repr()}`);
+        this.what = what;
+        this.token = token;
     }
 }
 
@@ -335,7 +345,7 @@ class Parser {
             return new Token(TokenTypes.RPAR, char, this.pos);
         } else if (char === '+') {
             return new Token(TokenTypes.PLUS, char, this.pos);
-        }else {
+        } else {
             return new Token(TokenTypes.CHAR, char, this.pos);
         }
     }
@@ -358,7 +368,7 @@ class Parser {
     number() {
         // NUMBER := INT*
         if(this.currentToken.type !== TokenTypes.INT)
-            throw new ParseError(`expected INT, got ${this.currentToken.repr()}`);
+            throw new ParseError(this.currentToken, `expected INT`);
 
         let number = 0;
         while(this.currentToken.type === TokenTypes.INT) {
@@ -387,7 +397,7 @@ class Parser {
             right = this.pool();
             pool.push(...right.pool);
         } else if(this.currentToken.type !== TokenTypes.EOS && this.currentToken.type !== TokenTypes.RPAR)
-            throw new ParseError(`expected EOS, RPAR, or PLUS, got ${this.currentToken.repr()}`);
+            throw new ParseError(this.currentToken, `expected EOS, RPAR, or PLUS`);
 
         return new Pool(pool);
     }
@@ -395,7 +405,7 @@ class Parser {
     subpool() {
         // SUBPOOL := ('b' | 'w') NUMBER? 'o' LPAR POOL RPAR
         if (this.currentToken.value !== 'b' && this.currentToken.value !== 'w')
-            throw new ParseError(`expected 'b' or 'w', got ${this.currentToken.repr()}`);
+            throw new ParseError(this.currentToken, `expected 'b' or 'w'`);
 
         let type = this.currentToken.value;
         this.next();
@@ -405,19 +415,19 @@ class Parser {
             n = this.number();
 
         if (this.currentToken.value !== 'o')
-            throw new ParseError(`expected 'o', got ${this.currentToken.repr()}`);
+            throw new ParseError(this.currentToken, `expected 'o'`);
 
         this.next();
 
         if (this.currentToken.type !== TokenTypes.LPAR)
-            throw new ParseError(`expected LPAR, got ${this.currentToken.repr()}`);
+            throw new ParseError(this.currentToken, `expected LPAR`);
 
         this.next();
 
         let pool = this.pool();
 
         if (this.currentToken.type !== TokenTypes.RPAR)
-            throw new ParseError(`expected RPAR, got ${this.currentToken.repr()}`);
+            throw new ParseError(this.currentToken, `expected RPAR`);
 
         this.next();
 
@@ -428,7 +438,7 @@ class Parser {
                 return new WorstOfPool(pool.pool, n);
             }
         } catch (error) {
-            throw new ParseError(`while instancing subpool got "${error.message}"`);
+            throw new ParseError(this.currentToken, `while instancing subpool got "${error.message}"`);
         }
 
     }
@@ -472,16 +482,6 @@ class Parser {
 
 }
 
-function sumOfRolls(rolls) {
-    let sum = 0;
-    if(rolls instanceof Array) {
-        rolls.forEach(roll => sum += sumOfRolls(roll));
-    } else
-        sum += rolls;
-
-    return sum;
-}
-
-let p = new Parser('bo(2d12) + 2d6').pool();
-let roll = p.roll();
-console.log(p.repr(), roll, sumOfRolls(roll));
+let p = new Parser('bo(2d12) + ').pool();
+let rolls = p.rolls(3);
+console.log(p.repr(), rolls, sumOfRolls(rolls[0]), sumOfRolls(rolls[1]), sumOfRolls(rolls[2]));
