@@ -13,7 +13,7 @@ Object.defineProperties(Array.prototype, {
     }
 });
 
-class Histogram {
+export class Histogram {
     // a histogram for integer values, contains bins for `this.min` to `this.max`.
 
     constructor(values) {
@@ -40,7 +40,7 @@ class Histogram {
     }
 }
 
-class RollResult {
+export class RollResult {
     // The result of a roll
 
     constructor(value, die) {
@@ -49,7 +49,7 @@ class RollResult {
     }
 }
 
-function sumOfRolls(rolls) {
+export function sumOfRolls(rolls) {
     let sum = 0;
     if(rolls instanceof Array) {
         rolls.forEach(roll => sum += sumOfRolls(roll));
@@ -59,7 +59,7 @@ function sumOfRolls(rolls) {
     return sum;
 }
 
-class Die {
+export class Die {
     // a simple die
 
     constructor(maximum){
@@ -103,7 +103,7 @@ class Die {
     }
 }
 
-class ExplodingDie extends Die {
+export class ExplodingDie extends Die {
     // an exploding die
 
     constructor(maximum, maxExplosion=3){
@@ -158,7 +158,7 @@ class ExplodingDie extends Die {
     }
 }
 
-class Modifier {
+export class Modifier {
     // a simple modifier
 
     constructor(value){
@@ -190,7 +190,7 @@ class Modifier {
     }
 }
 
-class Pool  {
+export class Pool  {
     // a pool of dice/pools
 
     constructor(pool) {
@@ -243,13 +243,13 @@ class Pool  {
     }
 }
 
-class SubPoolSizeError extends Error {
+export class SubPoolSizeError extends Error {
     constructor() {
         super("Size of subpool should be lower than of pool");
     }
 }
 
-class SubPool extends Pool {
+export class SubPool extends Pool {
     // select `n` results out of pool, using `selector`
 
     constructor(pool, n, selector) {
@@ -298,7 +298,7 @@ class SubPool extends Pool {
     }
 }
 
-class BestOfPool extends SubPool {
+export class BestOfPool extends SubPool {
     constructor(pool, n) {
         super(pool, n, (n, seq) => { seq.sort((a, b) => b - a); return seq.slice(0, n); });
     }
@@ -308,7 +308,7 @@ class BestOfPool extends SubPool {
     }
 }
 
-class WorstOfPool extends SubPool {
+export class WorstOfPool extends SubPool {
     constructor(pool, n) {
         super(pool, n, (n, seq) => { seq.sort((a, b) => a - b); return seq.slice(0, n); });
     }
@@ -327,7 +327,7 @@ const TokenTypes = {
     EOS: 'EOS'
 };
 
-class Token {
+export class Token {
     constructor(type, value, pos=-1) {
         this.type = type;
         this.value = value;
@@ -339,7 +339,7 @@ class Token {
     }
 }
 
-class ParseError extends Error {
+export class ParseError extends Error {
     constructor(token, what) {
         super(what + ` @ ${token.repr()}`);
         this.what = what;
@@ -347,7 +347,7 @@ class ParseError extends Error {
     }
 }
 
-class Parser {
+export class Parser {
     constructor(input) {
         this.input = input;
         this.pos = -1;

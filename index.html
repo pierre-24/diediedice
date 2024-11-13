@@ -7,7 +7,20 @@
 
     <h1>Die, die, dice!</h1>
 
-    <script src='models.js' language="JavaScript"></script>
-    </body>
+    <div data-controller="ddd">
+        <input type="text" data-ddd-target="input" placeholder="example: 1d6" data-action="keyup->ddd#changeInput">
+        <input type="button" value="roll!" data-ddd-target="roll" data-action="click->ddd#roll">
+    </div>
+
+    <script type="module">
+        import { Application } from "https://unpkg.com/@hotwired/stimulus@3.2.2/dist/stimulus.js";
+        window.Stimulus = Application.start();
+
+        import {
+            DDDController,
+        } from "./controllers.js";
+
+        Stimulus.register("ddd", DDDController);
+    </script>
 
 </html>
