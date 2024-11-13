@@ -63,6 +63,10 @@ class Die {
     histogram() {
         return new Histogram(this.all_events());
     }
+
+    repr() {
+        return `d${this.maximum}`;
+    }
 }
 
 class ExplodingDie extends Die {
@@ -104,7 +108,7 @@ class ExplodingDie extends Die {
                     if(v === m) {
                         recurse(i - 1, m, r + v);
                     } else {
-                        [...Array(Math.pow(m, i - 1))].map(_ => events.push(r + v)); // this event his `i`-fold more probable
+                        [...Array(Math.pow(m, i - 1))].map(_ => events.push(r + v)); // this event his `i-1`-fold more probable
                     }
                 });
             } else {
@@ -115,6 +119,10 @@ class ExplodingDie extends Die {
         recurse(this.maxExplosion, this.maximum, 0);
 
         return events;
+    }
+
+    repr() {
+        return `d${this.maximum}!${this.maxExplosion}`;
     }
 }
 
@@ -145,6 +153,10 @@ class Modifier {
 
     histogram() {
         return new Histogram(this.all_events());
+    }
+
+    repr() {
+        return `${this.value}`;
     }
 }
 
@@ -190,13 +202,23 @@ class Pool  {
     histogram() {
         return new Histogram(this.all_events());
     }
+
+    repr() {
+        return this.pool.map(die => die.repr()).join('+');
+    }
+}
+
+class SubPoolSizeError extends Error {
+    constructor() {
+        super("Size of subpool should be lower than of pool");
+    }
 }
 
 class SubPool extends Pool {
     // select `n` results out of pool, using `selector`
     constructor(pool, n, selector) {
         if(pool.length <= n)
-            throw Error("Size of subpool should be lower than pool");
+            throw new SubPoolSizeError();
 
         super(pool);
 
@@ -215,9 +237,13 @@ class SubPool extends Pool {
     }
 
     roll(n=1) {
-        return [...Array(n)].map(_ => {
+        if(n === 1) {
             return this.select(this.n, this.pool.map(die => die.roll()));
-        });
+        } else {
+            return [...Array(n)].map(_ => {
+                return this.select(this.n, this.pool.map(die => die.roll()));
+            });
+        }
     }
 
     all_events(){
@@ -236,11 +262,19 @@ class SubPool extends Pool {
 
         return events;
     }
+
+    repr(f='?') {
+        return `${f}${this.n}o(${super.repr()})`;
+    }
 }
 
 class BestOfPool extends SubPool {
     constructor(pool, n) {
         super(pool, n, (n, seq) => { seq.sort((a, b) => b - a); return seq.slice(0, n); });
+    }
+
+    repr() {
+        return super.repr('b');
     }
 }
 
@@ -248,7 +282,206 @@ class WorstOfPool extends SubPool {
     constructor(pool, n) {
         super(pool, n, (n, seq) => { seq.sort((a, b) => a - b); return seq.slice(0, n); });
     }
+
+    repr() {
+        return super.repr('w');
+    }
 }
 
-let pool1 = new ExplodingDie(4); // new BestOfPool([new Die(12), new Die(12)], 1);
-console.log(pool1.histogram().density);
+const TokenTypes = {
+    CHAR: 'CHR',
+    LPAR: '(',
+    RPAR: ')',
+    PLUS: '+',
+    INT: 'INT',
+    EOS: 'EOS'
+};
+
+class Token {
+    constructor(type, value, pos=-1) {
+        this.type = type;
+        this.value = value;
+        this.position = pos;
+    }
+
+    repr() {
+        return `Token(${this.type}, ${this.value}, ${this.position})`;
+    }
+}
+
+class ParseError extends Error {
+    constructor(what) {
+        super(what);
+    }
+}
+
+class Parser {
+    constructor(input) {
+        this.input = input;
+        this.pos = -1;
+        this.currentToken = null;
+
+        this.next();
+    }
+
+    _parseChar(char) {
+        // parse a character into a number
+
+        if(!isNaN(char)) {
+           return new Token(TokenTypes.INT, parseInt(char), this.pos);
+        } else if (char === '(') {
+            return new Token(TokenTypes.LPAR, char, this.pos);
+        } else if (char === ')') {
+            return new Token(TokenTypes.RPAR, char, this.pos);
+        } else if (char === '+') {
+            return new Token(TokenTypes.PLUS, char, this.pos);
+        }else {
+            return new Token(TokenTypes.CHAR, char, this.pos);
+        }
+    }
+
+    next() {
+        // go to next token
+
+        this.pos += 1;
+        while (this.pos < this.input.length && this.input[this.pos] === ' ') // skip spaces
+            this.pos += 1;
+
+        if (this.pos < this.input.length) {
+            let char = this.input[this.pos];
+            this.currentToken = this._parseChar(char);
+        } else {
+            this.currentToken = new Token(TokenTypes.EOS, '\0', this.pos);
+        }
+    }
+
+    number() {
+        // NUMBER := INT*
+        if(this.currentToken.type !== TokenTypes.INT)
+            throw new ParseError(`expected INT, got ${this.currentToken.repr()}`);
+
+        let number = 0;
+        while(this.currentToken.type === TokenTypes.INT) {
+            number = number * 10 + this.currentToken.value;
+            this.next();
+        }
+
+        return number;
+    }
+
+    pool() {
+        // POOL := (DIE | SUBPOOL) ('+' POOL)?
+
+        let pool = [];
+
+        if (this.currentToken.value === 'd' || this.currentToken.type === TokenTypes.INT) {
+            pool.push(...this.dice());
+        } else {
+            pool.push(this.subpool());
+        }
+
+        let right = null;
+
+        if (this.currentToken.type === TokenTypes.PLUS) {
+            this.next();
+            right = this.pool();
+            pool.push(...right.pool);
+        } else if(this.currentToken.type !== TokenTypes.EOS && this.currentToken.type !== TokenTypes.RPAR)
+            throw new ParseError(`expected EOS, RPAR, or PLUS, got ${this.currentToken.repr()}`);
+
+        return new Pool(pool);
+    }
+
+    subpool() {
+        // SUBPOOL := ('b' | 'w') NUMBER? 'o' LPAR POOL RPAR
+        if (this.currentToken.value !== 'b' && this.currentToken.value !== 'w')
+            throw new ParseError(`expected 'b' or 'w', got ${this.currentToken.repr()}`);
+
+        let type = this.currentToken.value;
+        this.next();
+
+        let n = 1;
+        if (this.currentToken.type === TokenTypes.INT)
+            n = this.number();
+
+        if (this.currentToken.value !== 'o')
+            throw new ParseError(`expected 'o', got ${this.currentToken.repr()}`);
+
+        this.next();
+
+        if (this.currentToken.type !== TokenTypes.LPAR)
+            throw new ParseError(`expected LPAR, got ${this.currentToken.repr()}`);
+
+        this.next();
+
+        let pool = this.pool();
+
+        if (this.currentToken.type !== TokenTypes.RPAR)
+            throw new ParseError(`expected RPAR, got ${this.currentToken.repr()}`);
+
+        this.next();
+
+        try {
+            if(type === 'b') {
+                return new BestOfPool(pool.pool, n);
+            } else if(type === 'w') {
+                return new WorstOfPool(pool.pool, n);
+            }
+        } catch (error) {
+            throw new ParseError(`while instancing subpool got "${error.message}"`);
+        }
+
+    }
+
+    dice() {
+        // DICE := NUMBER? ('d' NUMBER ('!' NUMBER?)?)?
+
+        let n = 1;
+        if (this.currentToken.type === TokenTypes.INT)
+            n = this.number();
+
+        if(this.currentToken.value === 'd') {
+            this.next();
+
+            let q = this.number();
+            let maxExplosion = 3;
+            let isExploding = false;
+
+            if (this.currentToken.value === '!') {
+                isExploding = true;
+                this.next();
+
+                if (this.currentToken.type === TokenTypes.INT)
+                    maxExplosion = this.number();
+            }
+
+            let dice = [];
+            for (let i = 0; i < n; i++) {
+                if (isExploding) {
+                    dice.push(new ExplodingDie(q, maxExplosion));
+                } else {
+                    dice.push(new Die(q));
+                }
+            }
+
+            return dice;
+        } else {
+            return [new Modifier(n)];
+        }
+    }
+
+}
+
+function sumOfRolls(rolls) {
+    let sum = 0;
+    if(rolls instanceof Array) {
+        rolls.forEach(roll => sum += sumOfRolls(roll));
+    } else
+        sum += rolls;
+
+    return sum;
+}
+
+let p = new Parser('bo(2d12) + 2d6').pool();
+let roll = p.roll();
+console.log(p.repr(), roll, sumOfRolls(roll));
