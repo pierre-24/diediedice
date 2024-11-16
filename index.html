@@ -2,14 +2,19 @@
 <html lang="en">
     <head>
         <title>Die, die, dice!</title>
+        <link rel="stylesheet" href="style.css">
     </head>
     <body>
 
     <h1>Die, die, dice!</h1>
 
     <div data-controller="ddd">
+        <form id="dice-input">
         <input type="text" data-ddd-target="input" placeholder="example: 1d6" data-action="keyup->ddd#changeInput">
         <input type="button" value="roll!" data-ddd-target="roll" data-action="click->ddd#roll">
+        </form>
+
+        <div id="roll-results" data-ddd-target="results"></div>
     </div>
 
     <script type="module">

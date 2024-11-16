@@ -55,6 +55,10 @@ export class DieResult {
     repr() {
         return `${this.die.repr()}=${this.value}`;
     }
+
+    html() {
+        return this.die.html(this.value);
+    }
 }
 
 export class DiceResult {
@@ -69,6 +73,12 @@ export class DiceResult {
 
     repr() {
         return '{' + this.rolls.map(roll => roll.repr()).join(' + ') + '}';
+    }
+
+    html() {
+        let $container = this.pool.html();
+        this.rolls.forEach((roll) => { $container.appendChild(roll.html()); });
+        return $container;
     }
 
 }
@@ -114,6 +124,20 @@ export class Die {
         // get the representation, for debugging purpose
 
         return `d${this.maximum}`;
+    }
+
+    html(result=1) {
+        let $die = document.createElement("div");
+
+        $die.classList.add('die');
+        $die.classList.add(`d${this.maximum}`);
+
+        let $span = document.createElement('span');
+        $span.appendChild(document.createTextNode(`${result}`));
+
+        $die.appendChild($span);
+
+        return $die;
     }
 }
 
@@ -170,6 +194,15 @@ export class ExplodingDie extends Die {
     repr() {
         return `d${this.maximum}!${this.maxExplosion}`;
     }
+
+    html(result = 1) {
+        let $die = super.html(result);
+        let $explosion = document.createElement("span");
+        $explosion.classList.add('badge');
+        $explosion.appendChild(document.createTextNode(`${this.maxExplosion}!`));
+        $die.appendChild($explosion);
+        return $die;
+    }
 }
 
 export class Modifier {
@@ -201,6 +234,17 @@ export class Modifier {
 
     repr() {
         return `${this.value}`;
+    }
+
+    html(result=1) {
+        let $die = document.createElement("div");
+
+        $die.classList.add('die');
+        $die.classList.add('modifier');
+
+        $die.appendChild(document.createTextNode(`${result}`));
+
+        return $die;
     }
 }
 
@@ -254,6 +298,12 @@ export class Pool  {
 
     repr() {
         return this.pool.map(die => die.repr()).join('+');
+    }
+
+    html() {
+        let $container = document.createElement("div");
+        $container.classList.add('pool');
+        return $container;
     }
 }
 
@@ -310,6 +360,19 @@ export class SubPool extends Pool {
     repr(f='?') {
         return `${f}${this.n}o(${super.repr()})`;
     }
+
+    html(f='?') {
+        let $container = super.html();
+
+        let $explosion = document.createElement("span");
+        $explosion.classList.add('badge');
+        $explosion.appendChild(document.createTextNode(f));
+
+        $container.classList.add('subpool')
+        $container.appendChild($explosion);
+
+        return $container;
+    }
 }
 
 export class BestOfPool extends SubPool {
@@ -320,6 +383,10 @@ export class BestOfPool extends SubPool {
     repr() {
         return super.repr('b');
     }
+
+    html() {
+        return super.html('b');
+    }
 }
 
 export class WorstOfPool extends SubPool {
@@ -329,6 +396,10 @@ export class WorstOfPool extends SubPool {
 
     repr() {
         return super.repr('w');
+    }
+
+    html() {
+        return super.html('w');
     }
 }
 

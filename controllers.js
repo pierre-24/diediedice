@@ -6,7 +6,7 @@ import { Parser } from "./models.js";
 export class DDDController extends Controller {
     // the main controller
 
-    static get targets() { return ["input", "roll"]; }
+    static get targets() { return ["input", "roll", "results"]; }
 
     connect() {
         this.changeInput();
@@ -21,6 +21,7 @@ export class DDDController extends Controller {
             this.rollTarget.disabled = false;
         } catch (error) {
             console.log(error.message);
+            this.pool = null;
             this.rollTarget.value = "error";
             this.rollTarget.disabled = true;
         }
@@ -28,6 +29,16 @@ export class DDDController extends Controller {
 
     roll() {
         let currentRoll =  this.pool.roll();
-        console.log("rolling...", currentRoll.repr(), currentRoll.sum());
+        let $container = document.createElement("div");
+        $container.classList.add('result');
+
+        $container.appendChild(currentRoll.html());
+
+        let $sum = document.createElement("div");
+        $sum.classList.add('sum');
+        $sum.appendChild(document.createTextNode(`= ${currentRoll.sum()}`));
+        $container.appendChild($sum);
+
+        this.resultsTarget.insertBefore($container, this.resultsTarget.firstChild);
     }
 }
