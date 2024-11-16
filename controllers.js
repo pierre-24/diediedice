@@ -22,7 +22,7 @@ export class DDDController extends Controller {
         } catch (error) {
             console.log(error.message);
             this.pool = null;
-            this.rollTarget.value = "error";
+            this.rollTarget.value = "error in input";
             this.rollTarget.disabled = true;
         }
     }
