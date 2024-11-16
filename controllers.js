@@ -67,6 +67,7 @@ export class DDDController extends Controller {
 
     setInputAndRoll(input) {
         this.inputTarget.value = input;
+        this.changeInput();
         this.roll();
     }
 
