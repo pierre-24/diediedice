@@ -6,7 +6,7 @@ import { Parser } from "./models.js";
 export class DDDController extends Controller {
     // the main controller
 
-    static get targets() { return ["input", "roll", "results", "histogram"]; }
+    static get targets() { return ["input", "roll", "results", "histogram", "history"]; }
 
     connect() {
         this.changeInput();
@@ -65,7 +65,32 @@ export class DDDController extends Controller {
         this.makeHistogram();
     }
 
+    setInputAndRoll(input) {
+        this.inputTarget.value = input;
+        this.roll();
+    }
+
+    _makeHistory() {
+        let currentInput = this.inputTarget.value;
+
+        let $history = document.createElement("a");
+        $history.classList.add('history-element');
+        $history.appendChild(document.createTextNode(currentInput));
+        $history.onclick = () => this.setInputAndRoll(currentInput);
+
+        this.historyTarget.querySelectorAll('.history-element').forEach($child => {
+            if($child.innerText === currentInput) {
+                $history = $child;
+                this.historyTarget.removeChild($child);
+            }
+        });
+
+
+        this.historyTarget.insertBefore($history, this.historyTarget.firstChild);
+    }
+
     roll() {
+        // roll
         let currentRoll =  this.pool.roll();
         let $container = document.createElement("div");
         $container.classList.add('result');
@@ -77,6 +102,12 @@ export class DDDController extends Controller {
         $sum.appendChild(document.createTextNode(`= ${currentRoll.sum()}`));
         $container.appendChild($sum);
 
+        if(this.resultsTarget.children.length > 10){ // remove if list is > 10
+            this.resultsTarget.removeChild(this.resultsTarget.lastChild);
+        }
+
         this.resultsTarget.insertBefore($container, this.resultsTarget.firstChild);
+
+        this._makeHistory();
     }
 }

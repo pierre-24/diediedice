@@ -28,6 +28,13 @@ footer {
     color: #777;
 }
 
+/* input */
+
+.history-element {
+    cursor: pointer;
+    margin-right: 1em;
+}
+
 /* histogram */
 .histogram-row .bar {
     border: 2px solid #ccc;
