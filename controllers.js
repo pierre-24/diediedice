@@ -1,7 +1,7 @@
 "use strict";
 
 import { Controller } from "https://unpkg.com/@hotwired/stimulus@3.2.2/dist/stimulus.js";
-import { Parser, sumOfRolls } from "./models.js";
+import { Parser } from "./models.js";
 
 export class DDDController extends Controller {
     // the main controller
@@ -28,6 +28,6 @@ export class DDDController extends Controller {
 
     roll() {
         let currentRoll =  this.pool.roll();
-        console.log("rolling...", currentRoll, sumOfRolls(currentRoll));
+        console.log("rolling...", currentRoll.repr(), currentRoll.sum());
     }
 }

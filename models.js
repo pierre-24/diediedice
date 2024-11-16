@@ -40,23 +40,37 @@ export class Histogram {
     }
 }
 
-export class RollResult {
+export class DieResult {
     // The result of a roll
 
     constructor(value, die) {
         this.value = value;
         this.die = die;
     }
+
+    sum() {
+        return this.value;
+    }
+
+    repr() {
+        return `${this.die.repr()}=${this.value}`;
+    }
 }
 
-export function sumOfRolls(rolls) {
-    let sum = 0;
-    if(rolls instanceof Array) {
-        rolls.forEach(roll => sum += sumOfRolls(roll));
-    } else
-        sum += rolls.value;
+export class DiceResult {
+    constructor(rolls, pool) {
+        this.rolls = rolls;
+        this.pool = pool;
+    }
 
-    return sum;
+    sum() {
+        return this.rolls.reduce((sum, roll) => { return sum + roll.sum(); }, 0);
+    }
+
+    repr() {
+        return '{' + this.rolls.map(roll => roll.repr()).join(' + ') + '}';
+    }
+
 }
 
 export class Die {
@@ -81,7 +95,7 @@ export class Die {
     roll() {
         // roll the die, result is in [min,max]
 
-        return new RollResult(Math.floor(Math.random()*(this.maximum)) + 1, this);
+        return new DieResult(Math.floor(Math.random()*(this.maximum)) + 1, this);
     }
 
     all_events() {
@@ -128,7 +142,7 @@ export class ExplodingDie extends Die {
             return  rf;
         }
 
-        return new RollResult(r(this.maximum, this.maxExplosion), this);
+        return new DieResult(r(this.maximum, this.maxExplosion), this);
     }
 
     all_events() {
@@ -174,7 +188,7 @@ export class Modifier {
     }
 
     roll() {
-        return new RollResult(this.value, this);
+        return new DieResult(this.value, this);
     }
 
     all_events() {
@@ -210,7 +224,7 @@ export class Pool  {
     }
 
     roll() {
-        return this.pool.map(die => die.roll());
+        return new DiceResult(this.pool.map(die => die.roll()), this);
     }
 
     rolls(n=1) {
@@ -272,8 +286,8 @@ export class SubPool extends Pool {
         return maxima.max();
     }
 
-    roll(n=1) {
-        return this.select(this.n, this.pool.map(die => die.roll()));
+    roll() {
+        return new DiceResult(this.select(this.n, this.pool.map(die => die.roll())), this);
     }
 
     all_events(){
@@ -383,7 +397,7 @@ export class Parser {
             let char = this.input[this.pos];
             this.currentToken = this._parseChar(char);
         } else {
-            this.currentToken = new Token(TokenTypes.EOS, '\0', this.pos);
+            this.currentToken = new Token(TokenTypes.EOS, '\\0', this.pos);
         }
     }
 
