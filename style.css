@@ -28,6 +28,18 @@ footer {
     color: #777;
 }
 
+/* histogram */
+.histogram-row .bar {
+    border: 2px solid #ccc;
+    display: inline-block;
+    width: 100%;
+}
+
+.histogram-row .cbar {
+    background: #ccc;
+    height: 8px;
+}
+
 /* dice & other results */
 .die {
     width: 50px;

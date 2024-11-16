@@ -12,13 +12,12 @@
             <a class="navbar-brand" href="/">
                 Die, die, dice!
             </a>
-
         </div>
     </nav>
 
     <main class="container-fluid" data-controller="ddd">
         <div class="row">
-            <div class="col-12 col-xl-8 col-xxl-7">
+            <div class="col-12 col-md-8 col-xxl-8">
                 <div class="blk" id="dice-input-form">
                     <h2>Your dice</h2>
                     <div class="input-group mb-3">
@@ -33,10 +32,22 @@
                     <div data-ddd-target="results"></div>
                 </div>
             </div>
-            <div class="col-12 col-xl-4 col-xxl-5">
+            <div class="col-12 col-md-4 col-xxl-4">
                 <div class="blk" id="histogram">
                     <h2>Histogram</h2>
-                    <div data-ddd-target="histogram"></div>
+                    <ul class="nav nav-tabs" id="histTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="hist-normal-tab" data-bs-toggle="tab" data-bs-target="#hist-normal-tab-pane" type="button" role="tab"  aria-controls="hist-normal-tab-pane" aria-selected="true">Normal</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="hist-atleast-tab" data-bs-toggle="tab" data-bs-target="#hist-atleast-tab-pane" type="button" role="tab" aria-controls="hist-atleast-tab-pane" aria-selected="false">At least</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="hist-atmost-tab" data-bs-toggle="tab" data-bs-target="#hist-atmost-tab-pane" type="button" role="tab" aria-controls="hist-atmost-tab-pane" aria-selected="false">At most</button>
+                        </li>
+                    </ul>
+
+                    <div data-ddd-target="histogram" class="tab-content"></div>
                 </div>
             </div>
         </div>

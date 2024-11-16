@@ -38,6 +38,28 @@ export class Histogram {
     roll(n=1) {
         return [...Array(n)].map(_ => this.rawValues[Math.floor(Math.random() * this.rawValues.length)]);
     }
+
+    html(mode='normal') {
+        let $histogram = document.createElement("table");
+
+        Object.keys(this.histogram).forEach(k => {
+            let $row = document.createElement("tr");
+            $row.classList.add('histogram-row');
+
+            let percentage = this.density[k] * 100;
+            if (mode === 'atleast') {
+                percentage = (1 - this.cumulativeDensity[k] + this.cumulativeDensity[this.min]) * 100;
+            } else if (mode === 'atmost') {
+                percentage = this.cumulativeDensity[k] * 100;
+            }
+
+            $row.innerHTML = `<td>${k}</td><td width="90%"><div class="bar"><div class="cbar" style="width: ${ percentage }%"></div></div></td><td><span class="text-muted">${percentage.toFixed(1)}%</span></td>`;
+
+            $histogram.appendChild($row);
+        });
+
+        return $histogram;
+    }
 }
 
 export class DieResult {
@@ -368,7 +390,7 @@ export class SubPool extends Pool {
         $explosion.classList.add('badge');
         $explosion.appendChild(document.createTextNode(f));
 
-        $container.classList.add('subpool')
+        $container.classList.add('subpool');
         $container.appendChild($explosion);
 
         return $container;
@@ -377,7 +399,10 @@ export class SubPool extends Pool {
 
 export class BestOfPool extends SubPool {
     constructor(pool, n) {
-        super(pool, n, (n, seq) => { seq.sort((a, b) => b - a); return seq.slice(0, n); });
+        super(pool, n, (n, seq) => {
+            seq.sort((a, b) => (b instanceof DieResult || b instanceof DiceResult) ? (b.sum() - a.sum()) : (b - a));
+            return seq.slice(0, n);
+        });
     }
 
     repr() {
@@ -391,7 +416,10 @@ export class BestOfPool extends SubPool {
 
 export class WorstOfPool extends SubPool {
     constructor(pool, n) {
-        super(pool, n, (n, seq) => { seq.sort((a, b) => a - b); return seq.slice(0, n); });
+        super(pool, n, (n, seq) => {
+            seq.sort((a, b) => (b instanceof DieResult || b instanceof DiceResult) ? (a.sum() - b.sum()) : (a - b));
+            return seq.slice(0, n);
+        });
     }
 
     repr() {

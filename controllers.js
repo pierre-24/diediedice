@@ -6,10 +6,45 @@ import { Parser } from "./models.js";
 export class DDDController extends Controller {
     // the main controller
 
-    static get targets() { return ["input", "roll", "results"]; }
+    static get targets() { return ["input", "roll", "results", "histogram"]; }
 
     connect() {
         this.changeInput();
+    }
+
+    makeHistogram() {
+
+        if(this.pool == null) {
+            this.histogramTarget.innerHTML = '<i>Incorrect input.</i>';
+        } else {
+            let histogram = this.pool.histogram();
+            let activeTab = 'normal';
+
+            // find the active tab
+            document.querySelectorAll('#histTabs .nav-link').forEach(child => {
+                if(child.classList.contains('active'))
+                    activeTab = child.id.replace('hist-', '').replace('-tab', '');
+            });
+
+            // add the 3 histograms
+            this.histogramTarget.innerHTML = '';
+
+            ['normal', 'atleast', 'atmost'].forEach(mode => {
+
+                let $histogram = histogram.html(mode);
+
+                let $div = document.createElement('div');
+                $div.id = `hist-${mode}-tab-pane`;
+                $div.classList.add('tab-pane');
+
+                if(mode === activeTab) {
+                    $div.classList.add('show', 'active');
+                }
+
+                $div.appendChild($histogram);
+                this.histogramTarget.appendChild($div);
+            });
+        }
     }
 
     changeInput() {
@@ -19,12 +54,15 @@ export class DDDController extends Controller {
             this.pool = p.pool();
             this.rollTarget.value = "roll!";
             this.rollTarget.disabled = false;
+
         } catch (error) {
             console.log(error.message);
             this.pool = null;
             this.rollTarget.value = "error in input";
             this.rollTarget.disabled = true;
         }
+
+        this.makeHistogram();
     }
 
     roll() {
