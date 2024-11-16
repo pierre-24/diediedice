@@ -3,12 +3,12 @@
 Object.defineProperties(Array.prototype, {
     max: {
         value: function() {
-            return Math.max.apply(null, this);
+            return this.reduce((a, b) => Math.max(a, b), -Infinity);
         }
     },
     min: {
         value: function() {
-            return Math.min.apply(null, this);
+            return this.reduce((a, b) => Math.min(a, b), Infinity);
         }
     }
 });
