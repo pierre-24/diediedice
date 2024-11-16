@@ -47,6 +47,11 @@ footer {
     height: 8px;
 }
 
+.histogram-summary {
+    text-align: center;
+    padding-top: .5em;
+}
+
 /* dice & other results */
 .die {
     width: 50px;

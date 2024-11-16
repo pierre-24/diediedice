@@ -21,12 +21,15 @@ export class Histogram {
         this.min = this.rawValues.min();
         this.max = this.rawValues.max();
         this.n = this.rawValues.length;
+        this.mean = this.rawValues.reduce((a, b) => a +  b, 0) / this.n;
+        this.variance = this.rawValues.reduce((a , b) => a + Math.pow(b - this.mean, 2), 0) / (this.n - 1);
+        this.std = Math.sqrt(this.variance);
 
         this.histogram = {};
         for (let i=this.min; i<= this.max; i++)
             this.histogram[i] = 0;
 
-        this.rawValues.forEach((i) => {this.histogram[i] += 1; });
+        this.rawValues.forEach((i) => { this.histogram[i] += 1; });
 
         this.density = {};
         Object.keys(this.histogram).forEach(k  => this.density[k] = this.histogram[k] / this.n);
@@ -40,7 +43,7 @@ export class Histogram {
     }
 
     html(mode='normal') {
-        let $histogram = document.createElement("table");
+        let $table = document.createElement("table");
 
         Object.keys(this.histogram).forEach(k => {
             let $row = document.createElement("tr");
@@ -55,10 +58,20 @@ export class Histogram {
 
             $row.innerHTML = `<td>${k}</td><td width="90%"><div class="bar"><div class="cbar" style="width: ${ percentage }%"></div></div></td><td><span class="text-muted">${percentage.toFixed(1)}%</span></td>`;
 
-            $histogram.appendChild($row);
+            $table.appendChild($row);
         });
 
-        return $histogram;
+        let $div = document.createElement('div');
+        if(mode === 'normal') {
+            let $p = document.createElement('p');
+            $p.classList.add('histogram-summary');
+            $p.appendChild(document.createTextNode(`µ = ${this.mean.toFixed(1)}, 95% interval = [${(this.mean - 2 * this.std).toFixed(1)}, ${(this.mean + 2 * this.std).toFixed(1)}].`));
+            $div.appendChild($p);
+        }
+
+        $div.appendChild($table);
+
+        return $div;
     }
 }
 
