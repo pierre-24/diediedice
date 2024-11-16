@@ -437,6 +437,7 @@ const TokenTypes = {
     RPAR: ')',
     PLUS: '+',
     INT: 'INT',
+    COMMENT: ';',
     EOS: 'EOS'
 };
 
@@ -480,7 +481,9 @@ export class Parser {
             return new Token(TokenTypes.RPAR, char, this.pos);
         } else if (char === '+') {
             return new Token(TokenTypes.PLUS, char, this.pos);
-        } else {
+        } else if (char === ';') {
+            return new Token(TokenTypes.COMMENT, char, this.pos);
+        }else {
             return new Token(TokenTypes.CHAR, char, this.pos);
         }
     }
@@ -532,8 +535,8 @@ export class Parser {
             this.next();
             right = this.pool();
             pool.push(...right.pool);
-        } else if(this.currentToken.type !== TokenTypes.EOS && this.currentToken.type !== TokenTypes.RPAR)
-            throw new ParseError(this.currentToken, `expected EOS, RPAR, or PLUS`);
+        } else if(this.currentToken.type !== TokenTypes.EOS && this.currentToken.type !== TokenTypes.COMMENT && this.currentToken.type !== TokenTypes.RPAR)
+            throw new ParseError(this.currentToken, `expected EOS, COMMENT, RPAR, or PLUS`);
 
         return new Pool(pool);
     }
