@@ -72,7 +72,7 @@ export class DDDController extends Controller {
     }
 
     _makeHistory() {
-        let currentInput = this.inputTarget.value;
+        let currentInput = this.inputTarget.value.replace(' ', '');
 
         let $history = document.createElement("a");
         $history.classList.add('history-element');
@@ -85,7 +85,6 @@ export class DDDController extends Controller {
                 this.historyTarget.removeChild($child);
             }
         });
-
 
         this.historyTarget.insertBefore($history, this.historyTarget.firstChild);
     }

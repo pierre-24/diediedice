@@ -39,7 +39,7 @@
                     <h2>Your dice</h2>
                     <div class="input-group mb-3">
                         <label class="input-group-text" for="dice-input">Definition</label>
-                        <input class="form-control" type="text" id="dice-input" data-ddd-target="input" placeholder="example: 1d6" data-action="keyup->ddd#changeInput">
+                        <input class="form-control" type="text" id="dice-input" data-ddd-target="input" placeholder="example: 1d6" data-action="keyup->ddd#changeInput keydown.enter->ddd#roll">
                         <input class="btn btn-outline-secondary"  type="button" value="roll!" data-ddd-target="roll" data-action="click->ddd#roll">
                     </div>
                     <div id="history" data-ddd-target="history"></div>
