@@ -82,7 +82,12 @@ export class Histogram {
                     percentage = this.cumulativeDensity[k] * 100;
                 }
 
-                $row.innerHTML = `<td>${k}</td><td width="90%"><div class="bar"><div class="cbar" style="width: ${percentage}%"></div></div></td><td><span class="text-muted">${percentage.toFixed(1)}%</span></td>`;
+                $row.innerHTML = `
+                    <td>${k}</td>
+                    <td width="85%"><div class="bar"><div class="cbar" style="width: ${percentage}%"></div></div></td>
+                    <td><span class="text-muted">${percentage.toFixed(1)}%</span></td>
+                    <td><span class="text-muted small">(1/${Math.ceil(100/percentage)})</span></td>
+                `;
 
                 $table.appendChild($row);
             }
