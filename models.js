@@ -383,12 +383,12 @@ export class SubPool extends Pool {
 
     min() {
         let minima = this.select_rolls(this.n, this.pool.map((die) => new DieResult(die.min(), die)));
-        return minima.map(i => i.sum()).min();
+        return new DiceResult(minima, this).sum();
     }
 
     max() {
         let maxima = this.select_rolls(this.n, this.pool.map((die) => new DieResult(die.max(), die)));
-        return maxima.map(i => i.sum()).max();
+        return new DiceResult(maxima, this).sum();
     }
 
     roll() {
