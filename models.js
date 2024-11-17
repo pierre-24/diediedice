@@ -325,17 +325,23 @@ export class Pool  {
 
     all_events() {
         let each_events = this.pool.map((die) => { return die.all_events(); });
-        let events = [...Array(this.max() + 1).keys()].map(i => 0);
+        let events = [...Array(this.max() + 1).keys()].map(_ => 0);
 
-        function recurse(i, kx, v) {
-            if(i < each_events.length) {
-                each_events[i].keys().forEach((k) => { if(v * each_events[i][k] > 0) recurse(i + 1, kx + k, v * each_events[i][k]); });
+        each_events.keys().forEach(i => {
+            let prev_events = [...events];
+            events = [...Array(this.max() + 1).keys()].map(_ => 0);
+            if(i === 0) {
+                each_events[0].keys().forEach(k => events[k] = each_events[0][k]);
             } else {
-               events[kx] += v;
+                each_events[i].keys().forEach(k2 => {
+                    if(each_events[i][k2] > 0)
+                        prev_events.keys().forEach(k1 =>  {
+                            if(prev_events[k1] > 0)
+                                events[k1 + k2] += each_events[i][k2] * prev_events[k1];
+                        });
+                });
             }
-        }
-
-        recurse(0, 0, 1);
+        });
 
         return events;
     }
