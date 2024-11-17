@@ -14,7 +14,7 @@ Object.defineProperties(Array.prototype, {
 });
 
 export class Histogram {
-    // a histogram for integer values, contains bins for `this.min` to `this.max`.
+    // a histogram for integer values up to `this.max`.
 
     constructor(values) {
         this.histogram = values;
@@ -49,7 +49,7 @@ export class Histogram {
         this.variance = this.histogram.keys().reduce((a , b) => a + this.histogram[b] * Math.pow(b - this.mean, 2), 0) / this.n;
         this.std = Math.sqrt(this.variance);
 
-        console.log(this.mean, this.std);
+        console.log(`histogram: µ=${this.mean}, std=${this.std}`);
 
         this.density = {};
         Object.keys(this.histogram).forEach(k  => this.density[k] = this.histogram[k] / this.n);
@@ -325,17 +325,17 @@ export class Pool  {
 
     all_events() {
         let each_events = this.pool.map((die) => { return die.all_events(); });
-        let events = [];
+        let events = [...Array(this.max() + 1).keys()].map(i => 0);
 
-        function recurse(i, r) {
+        function recurse(i, kx, v) {
             if(i < each_events.length) {
-                each_events[i].forEach((v) => { recurse(i + 1, r + v); });
+                each_events[i].keys().forEach((k) => { if(v * each_events[i][k] > 0) recurse(i + 1, kx + k, v * each_events[i][k]); });
             } else {
-               events.push(r);
+               events[kx] += v;
             }
         }
 
-        recurse(0, 0);
+        recurse(0, 0, 1);
 
         return events;
     }
@@ -364,43 +364,46 @@ export class SubPoolSizeError extends Error {
 export class SubPool extends Pool {
     // select `n` results out of pool, using `selector`
 
-    constructor(pool, n, selector) {
+    constructor(pool, n, select_rolls, select_events) {
         if(pool.length <= n)
             throw new SubPoolSizeError();
 
         super(pool);
 
         this.n = n;
-        this.select = selector;
+        this.select_rolls = select_rolls;
+        this.select_events = select_events;
     }
 
     min() {
-        let minima = this.select(this.n, this.pool.map((die) => die.min()));
-        return minima.min();
+        let minima = this.select_rolls(this.n, this.pool.map((die) => new DieResult(die.min(), die)));
+        return minima.map(i => i.sum()).min();
     }
 
     max() {
-        let maxima = this.select(this.n, this.pool.map((die) => die.max()));
-        return maxima.max();
+        let maxima = this.select_rolls(this.n, this.pool.map((die) => new DieResult(die.max(), die)));
+        return maxima.map(i => i.sum()).max();
     }
 
     roll() {
-        return new DiceResult(this.select(this.n, this.pool.map(die => die.roll())), this);
+        let roll = this.pool.map(die => die.roll());
+        return new DiceResult(this.select_rolls(this.n, roll), this);
     }
 
     all_events(){
         let each_events = this.pool.map((die) => { return die.all_events(); });
-        let events = [];
+        let events = [...Array(this.max() + 1).keys()].map(i => 0);
 
-        function recurse(i, r, select) {
+        function recurse(i, rx, select) {
             if(i < each_events.length) {
-                each_events[i].forEach((v) => { recurse(i + 1, [...r, v], select); });
+                each_events[i].keys().forEach((k) => { if(each_events[i][k] > 0) recurse(i + 1, [...rx, [k, each_events[i][k]]], select); });
             } else {
-                events.push(select(r).reduce((a, b) => a + b, 0));
+                let selected = select(rx);
+                events[selected.reduce((a, b) => a + b[0], 0)] += selected.reduce((a, b) => a * b[1], 1);
             }
         }
 
-        recurse(0, [], (seq) => {return this.select(this.n, seq);});
+        recurse(0, [], (seq) => {return this.select_events(this.n, seq);});
 
         return events;
     }
@@ -425,10 +428,12 @@ export class SubPool extends Pool {
 
 export class BestOfPool extends SubPool {
     constructor(pool, n) {
-        super(pool, n, (n, seq) => {
-            seq.sort((a, b) => (b instanceof DieResult || b instanceof DiceResult) ? (b.sum() - a.sum()) : (b - a));
-            return seq.slice(0, n);
-        });
+        super(
+            pool,
+            n,
+            (n, seq) => { seq.sort((a, b) => b.sum() - a.sum()); return seq.slice(0, n); },
+            (n, seq) => { seq.sort((a, b) => b[0] - a[0]); return seq.slice(0, n); }
+        );
     }
 
     repr() {
@@ -442,10 +447,12 @@ export class BestOfPool extends SubPool {
 
 export class WorstOfPool extends SubPool {
     constructor(pool, n) {
-        super(pool, n, (n, seq) => {
-            seq.sort((a, b) => (b instanceof DieResult || b instanceof DiceResult) ? (a.sum() - b.sum()) : (a - b));
-            return seq.slice(0, n);
-        });
+        super(
+            pool,
+            n,
+            (n, seq) => { seq.sort((a, b) => a.sum() - b.sum()); return seq.slice(0, n); },
+            (n, seq) => { seq.sort((a, b) => a[0] - b[0]); return seq.slice(0, n); }
+        );
     }
 
     repr() {
