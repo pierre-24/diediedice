@@ -17,19 +17,39 @@ export class Histogram {
     // a histogram for integer values, contains bins for `this.min` to `this.max`.
 
     constructor(values) {
-        this.rawValues = values;
-        this.min = this.rawValues.min();
-        this.max = this.rawValues.max();
-        this.n = this.rawValues.length;
-        this.mean = this.rawValues.reduce((a, b) => a +  b, 0) / this.n;
-        this.variance = this.rawValues.reduce((a , b) => a + Math.pow(b - this.mean, 2), 0) / (this.n - 1);
+        this.histogram = values;
+
+        this.min = this.histogram.keys().reduce((a, b) => {
+            if(this.histogram[a] === 0 && this.histogram[b] === 0)
+                return this.histogram.length;
+            else if(this.histogram[a] === 0) {
+                return b;
+            } else if(this.histogram[b] === 0) {
+                return a;
+            } else {
+                return (a < b) ? a : b;
+            }
+        }, this.histogram.length);
+
+        this.max = this.histogram.keys().reduce((a, b) => {
+            if(this.histogram[a] === 0 && this.histogram[b] === 0)
+                return 0;
+            else if(this.histogram[a] === 0) {
+                return b;
+            } else if(this.histogram[b] === 0) {
+                return a;
+            } else {
+                return (a < b) ? b : a;
+            }
+        }, 0);
+
+        this.n = this.histogram.keys().reduce((a, b) => a + this.histogram[b], 0);
+
+        this.mean = this.histogram.keys().reduce((a, b) => a + b * this.histogram[b], 0) / this.n;
+        this.variance = this.histogram.keys().reduce((a , b) => a + this.histogram[b] * Math.pow(b - this.mean, 2), 0) / this.n;
         this.std = Math.sqrt(this.variance);
 
-        this.histogram = {};
-        for (let i=this.min; i<= this.max; i++)
-            this.histogram[i] = 0;
-
-        this.rawValues.forEach((i) => { this.histogram[i] += 1; });
+        console.log(this.mean, this.std);
 
         this.density = {};
         Object.keys(this.histogram).forEach(k  => this.density[k] = this.histogram[k] / this.n);
@@ -39,33 +59,35 @@ export class Histogram {
     }
 
     roll(n=1) {
-        return [...Array(n)].map(_ => this.rawValues[Math.floor(Math.random() * this.rawValues.length)]);
+        return [...Array(n)].map(_ => this.histogram[Math.floor(Math.random() * this.histogram.length)]);
     }
 
     html(mode='normal') {
         let $table = document.createElement("table");
 
         Object.keys(this.histogram).forEach(k => {
-            let $row = document.createElement("tr");
-            $row.classList.add('histogram-row');
+            if(k >= this.min) {
+                let $row = document.createElement("tr");
+                $row.classList.add('histogram-row');
 
-            let percentage = this.density[k] * 100;
-            if (mode === 'atleast') {
-                percentage = (1 - this.cumulativeDensity[k] + this.cumulativeDensity[this.min]) * 100;
-            } else if (mode === 'atmost') {
-                percentage = this.cumulativeDensity[k] * 100;
+                let percentage = this.density[k] * 100;
+                if (mode === 'atleast') {
+                    percentage = (1 - this.cumulativeDensity[k] + this.cumulativeDensity[this.min]) * 100;
+                } else if (mode === 'atmost') {
+                    percentage = this.cumulativeDensity[k] * 100;
+                }
+
+                $row.innerHTML = `<td>${k}</td><td width="90%"><div class="bar"><div class="cbar" style="width: ${percentage}%"></div></div></td><td><span class="text-muted">${percentage.toFixed(1)}%</span></td>`;
+
+                $table.appendChild($row);
             }
-
-            $row.innerHTML = `<td>${k}</td><td width="90%"><div class="bar"><div class="cbar" style="width: ${ percentage }%"></div></div></td><td><span class="text-muted">${percentage.toFixed(1)}%</span></td>`;
-
-            $table.appendChild($row);
         });
 
         let $div = document.createElement('div');
         if(mode === 'normal') {
             let $p = document.createElement('p');
             $p.classList.add('histogram-summary');
-            $p.appendChild(document.createTextNode(`µ = ${this.mean.toFixed(1)}, 95% interval = [${(this.mean - 2 * this.std).toFixed(1)}, ${(this.mean + 2 * this.std).toFixed(1)}].`));
+            $p.appendChild(document.createTextNode(`µ = ${this.mean.toFixed(1)}, 95% interval = [${Math.max(this.mean - 2 * this.std, this.min).toFixed(1)}, ${Math.min(this.mean + 2 * this.std, this.max).toFixed(1)}].`));
             $div.appendChild($p);
         }
 
@@ -146,7 +168,7 @@ export class Die {
     all_events() {
         // get all possible value
 
-        return [...Array(this.maximum).keys()].map(i => i + 1);
+        return [...Array(this.maximum + 1).keys()].map(i => i > 0 ? 1 : 0);
     }
 
     histogram() {
@@ -205,25 +227,16 @@ export class ExplodingDie extends Die {
     }
 
     all_events() {
-        let events = [];
-
-        function recurse(i, m, r) {
-            if(i > 0) {
-                [...Array(m).keys()].map(j => j + 1).forEach((v) => {
-                    if(v === m) {
-                        recurse(i - 1, m, r + v);
-                    } else {
-                        [...Array(Math.pow(m, i - 1))].map(_ => events.push(r + v)); // this event his `i-1`-fold more probable
-                    }
-                });
-            } else {
-                events.push(r);
+        return [...Array(this.maximum * this.maxExplosion + 1).keys()].map(i => {
+            if(i % this.maximum === 0 && i !== this.maximum * this.maxExplosion)
+                return 0;
+            else if(i === this.maximum * this.maxExplosion)
+                return 1;
+            else {
+                let nExplosion = Math.floor(i / this.maximum);
+                return Math.pow(this.maximum, this.maxExplosion - nExplosion - 1);
             }
-        }
-
-        recurse(this.maxExplosion, this.maximum, 0);
-
-        return events;
+        });
     }
 
     repr() {
@@ -260,7 +273,7 @@ export class Modifier {
     }
 
     all_events() {
-        return [this.value];
+        return [...Array(this.value + 1).keys()].map(i => i === this.value ? 1 : 0);
     }
 
     histogram() {
