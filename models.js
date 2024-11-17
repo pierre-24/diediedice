@@ -397,19 +397,37 @@ export class SubPool extends Pool {
     }
 
     all_events(){
-        let each_events = this.pool.map((die) => { return die.all_events(); });
         let events = [...Array(this.max() + 1).keys()].map(i => 0);
 
-        function recurse(i, rx, select) {
-            if(i < each_events.length) {
-                each_events[i].keys().forEach((k) => { if(each_events[i][k] > 0) recurse(i + 1, [...rx, [k, each_events[i][k]]], select); });
-            } else {
-                let selected = select(rx);
-                events[selected.reduce((a, b) => a + b[0], 0)] += selected.reduce((a, b) => a * b[1], 1);
+        let N = this.pool.map((die) => die.max()).reduce((a, b) => a * b, 1);
+
+        if(N < 10000) {
+            let each_events = this.pool.map((die) => {
+                return die.all_events();
+            });
+
+            function recurse(i, rx, select) {
+                if (i < each_events.length) {
+                    each_events[i].keys().forEach((k) => {
+                        if (each_events[i][k] > 0) recurse(i + 1, [...rx, [k, each_events[i][k]]], select);
+                    });
+                } else {
+                    let selected = select(rx);
+                    events[selected.reduce((a, b) => a + b[0], 0)] += selected.reduce((a, b) => a * b[1], 1);
+                }
+            }
+
+            recurse(0, [], (seq) => {
+                return this.select_events(this.n, seq);
+            });
+        } else {
+            console.log(`N=${N}, use a statistical approach`);
+
+            for(let i = 0; i < 10000; i++) {
+                let roll = this.roll();
+                events[roll.sum()] += 1;
             }
         }
-
-        recurse(0, [], (seq) => {return this.select_events(this.n, seq);});
 
         return events;
     }
