@@ -56,6 +56,11 @@ export class Histogram {
 
         this.cumulativeDensity = {};
         Object.keys(this.density).forEach(k  => this.cumulativeDensity[k] = this.density[k] + (parseInt(k) === this.min ? 0 : this.cumulativeDensity[k-1]));
+
+        this.CI95 = [
+            Object.keys(this.cumulativeDensity).reduce((a, b) => (this.cumulativeDensity[b] < 0.025 && b > a) ? b : a, this.min),
+            Object.keys(this.cumulativeDensity).reduce((a, b) => (this.cumulativeDensity[b] > 0.975 && b < a) ? b : a, this.max)
+        ];
     }
 
     roll(n=1) {
@@ -87,7 +92,8 @@ export class Histogram {
         if(mode === 'normal') {
             let $p = document.createElement('p');
             $p.classList.add('histogram-summary');
-            $p.appendChild(document.createTextNode(`µ = ${this.mean.toFixed(1)}, 95% interval = [${Math.max(this.mean - 2 * this.std, this.min).toFixed(1)}, ${Math.min(this.mean + 2 * this.std, this.max).toFixed(1)}].`));
+
+            $p.appendChild(document.createTextNode(`µ = ${this.mean.toFixed(1)}, σ = ${this.std.toFixed(1)}, 95% interval = [${this.CI95[0]}, ${this.CI95[1]}].`));
             $div.appendChild($p);
         }
 
@@ -334,11 +340,12 @@ export class Pool  {
                 each_events[0].keys().forEach(k => events[k] = each_events[0][k]);
             } else {
                 each_events[i].keys().forEach(k2 => {
-                    if(each_events[i][k2] > 0)
-                        prev_events.keys().forEach(k1 =>  {
-                            if(prev_events[k1] > 0)
+                    if(each_events[i][k2] > 0) {
+                        prev_events.keys().forEach(k1 => {
+                            if (prev_events[k1] > 0)
                                 events[k1 + k2] += each_events[i][k2] * prev_events[k1];
                         });
+                    }
                 });
             }
         });
