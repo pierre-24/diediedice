@@ -14,58 +14,86 @@ Object.defineProperties(Array.prototype, {
 });
 
 export class Histogram {
-    // a histogram for integer values, contains bins for `this.min` to `this.max`.
+    // a histogram for integer values up to `this.max`.
 
     constructor(values) {
-        this.rawValues = values;
-        this.min = this.rawValues.min();
-        this.max = this.rawValues.max();
-        this.n = this.rawValues.length;
-        this.mean = this.rawValues.reduce((a, b) => a +  b, 0) / this.n;
-        this.variance = this.rawValues.reduce((a , b) => a + Math.pow(b - this.mean, 2), 0) / (this.n - 1);
+        this.histogram = values;
+
+        this.min = this.histogram.keys().reduce((a, b) => {
+            if(this.histogram[a] === 0 && this.histogram[b] === 0)
+                return this.histogram.length;
+            else if(this.histogram[a] === 0) {
+                return b;
+            } else if(this.histogram[b] === 0) {
+                return a;
+            } else {
+                return (a < b) ? a : b;
+            }
+        }, this.histogram.length);
+
+        this.max = this.histogram.keys().reduce((a, b) => {
+            if(this.histogram[a] === 0 && this.histogram[b] === 0)
+                return 0;
+            else if(this.histogram[a] === 0) {
+                return b;
+            } else if(this.histogram[b] === 0) {
+                return a;
+            } else {
+                return (a < b) ? b : a;
+            }
+        }, 0);
+
+        this.n = this.histogram.keys().reduce((a, b) => a + this.histogram[b], 0);
+
+        this.mean = this.histogram.keys().reduce((a, b) => a + b * this.histogram[b], 0) / this.n;
+        this.variance = this.histogram.keys().reduce((a , b) => a + this.histogram[b] * Math.pow(b - this.mean, 2), 0) / this.n;
         this.std = Math.sqrt(this.variance);
 
-        this.histogram = {};
-        for (let i=this.min; i<= this.max; i++)
-            this.histogram[i] = 0;
-
-        this.rawValues.forEach((i) => { this.histogram[i] += 1; });
+        console.log(`histogram: µ=${this.mean}, std=${this.std}`);
 
         this.density = {};
         Object.keys(this.histogram).forEach(k  => this.density[k] = this.histogram[k] / this.n);
 
         this.cumulativeDensity = {};
         Object.keys(this.density).forEach(k  => this.cumulativeDensity[k] = this.density[k] + (parseInt(k) === this.min ? 0 : this.cumulativeDensity[k-1]));
+
+        this.CI95 = [
+            Object.keys(this.cumulativeDensity).reduce((a, b) => (this.cumulativeDensity[b] < 0.025 && b > a) ? b : a, this.min),
+            Object.keys(this.cumulativeDensity).reduce((a, b) => (this.cumulativeDensity[b] > 0.975 && b < a) ? b : a, this.max)
+        ];
     }
 
     roll(n=1) {
-        return [...Array(n)].map(_ => this.rawValues[Math.floor(Math.random() * this.rawValues.length)]);
+        return [...Array(n)].map(_ => this.histogram[Math.floor(Math.random() * this.histogram.length)]);
     }
 
     html(mode='normal') {
         let $table = document.createElement("table");
 
         Object.keys(this.histogram).forEach(k => {
-            let $row = document.createElement("tr");
-            $row.classList.add('histogram-row');
+            if(k >= this.min) {
+                let $row = document.createElement("tr");
+                $row.classList.add('histogram-row');
 
-            let percentage = this.density[k] * 100;
-            if (mode === 'atleast') {
-                percentage = (1 - this.cumulativeDensity[k] + this.cumulativeDensity[this.min]) * 100;
-            } else if (mode === 'atmost') {
-                percentage = this.cumulativeDensity[k] * 100;
+                let percentage = this.density[k] * 100;
+                if (mode === 'atleast') {
+                    percentage = (1 - this.cumulativeDensity[k] + this.cumulativeDensity[this.min]) * 100;
+                } else if (mode === 'atmost') {
+                    percentage = this.cumulativeDensity[k] * 100;
+                }
+
+                $row.innerHTML = `<td>${k}</td><td width="90%"><div class="bar"><div class="cbar" style="width: ${percentage}%"></div></div></td><td><span class="text-muted">${percentage.toFixed(1)}%</span></td>`;
+
+                $table.appendChild($row);
             }
-
-            $row.innerHTML = `<td>${k}</td><td width="90%"><div class="bar"><div class="cbar" style="width: ${ percentage }%"></div></div></td><td><span class="text-muted">${percentage.toFixed(1)}%</span></td>`;
-
-            $table.appendChild($row);
         });
 
         let $div = document.createElement('div');
         if(mode === 'normal') {
             let $p = document.createElement('p');
             $p.classList.add('histogram-summary');
-            $p.appendChild(document.createTextNode(`µ = ${this.mean.toFixed(1)}, 95% interval = [${(this.mean - 2 * this.std).toFixed(1)}, ${(this.mean + 2 * this.std).toFixed(1)}].`));
+
+            $p.appendChild(document.createTextNode(`µ = ${this.mean.toFixed(1)}, σ = ${this.std.toFixed(1)}, 95% interval = [${this.CI95[0]}, ${this.CI95[1]}].`));
             $div.appendChild($p);
         }
 
@@ -146,7 +174,7 @@ export class Die {
     all_events() {
         // get all possible value
 
-        return [...Array(this.maximum).keys()].map(i => i + 1);
+        return [...Array(this.maximum + 1).keys()].map(i => i > 0 ? 1 : 0);
     }
 
     histogram() {
@@ -205,25 +233,16 @@ export class ExplodingDie extends Die {
     }
 
     all_events() {
-        let events = [];
-
-        function recurse(i, m, r) {
-            if(i > 0) {
-                [...Array(m).keys()].map(j => j + 1).forEach((v) => {
-                    if(v === m) {
-                        recurse(i - 1, m, r + v);
-                    } else {
-                        [...Array(Math.pow(m, i - 1))].map(_ => events.push(r + v)); // this event his `i-1`-fold more probable
-                    }
-                });
-            } else {
-                events.push(r);
+        return [...Array(this.maximum * this.maxExplosion + 1).keys()].map(i => {
+            if(i % this.maximum === 0 && i !== this.maximum * this.maxExplosion)
+                return 0;
+            else if(i === this.maximum * this.maxExplosion)
+                return 1;
+            else {
+                let nExplosion = Math.floor(i / this.maximum);
+                return Math.pow(this.maximum, this.maxExplosion - nExplosion - 1);
             }
-        }
-
-        recurse(this.maxExplosion, this.maximum, 0);
-
-        return events;
+        });
     }
 
     repr() {
@@ -260,7 +279,7 @@ export class Modifier {
     }
 
     all_events() {
-        return [this.value];
+        return [...Array(this.value + 1).keys()].map(i => i === this.value ? 1 : 0);
     }
 
     histogram() {
@@ -312,17 +331,24 @@ export class Pool  {
 
     all_events() {
         let each_events = this.pool.map((die) => { return die.all_events(); });
-        let events = [];
+        let events = [...Array(this.max() + 1).keys()].map(_ => 0);
 
-        function recurse(i, r) {
-            if(i < each_events.length) {
-                each_events[i].forEach((v) => { recurse(i + 1, r + v); });
+        each_events.keys().forEach(i => {
+            let prev_events = [...events];
+            events = [...Array(this.max() + 1).keys()].map(_ => 0);
+            if(i === 0) {
+                each_events[0].keys().forEach(k => events[k] = each_events[0][k]);
             } else {
-               events.push(r);
+                each_events[i].keys().forEach(k2 => {
+                    if(each_events[i][k2] > 0) {
+                        prev_events.keys().forEach(k1 => {
+                            if (prev_events[k1] > 0)
+                                events[k1 + k2] += each_events[i][k2] * prev_events[k1];
+                        });
+                    }
+                });
             }
-        }
-
-        recurse(0, 0);
+        });
 
         return events;
     }
@@ -351,43 +377,64 @@ export class SubPoolSizeError extends Error {
 export class SubPool extends Pool {
     // select `n` results out of pool, using `selector`
 
-    constructor(pool, n, selector) {
+    constructor(pool, n, select_rolls, select_events) {
         if(pool.length <= n)
             throw new SubPoolSizeError();
 
         super(pool);
 
         this.n = n;
-        this.select = selector;
+        this.select_rolls = select_rolls;
+        this.select_events = select_events;
     }
 
     min() {
-        let minima = this.select(this.n, this.pool.map((die) => die.min()));
-        return minima.min();
+        let minima = this.select_rolls(this.n, this.pool.map((die) => new DieResult(die.min(), die)));
+        return new DiceResult(minima, this).sum();
     }
 
     max() {
-        let maxima = this.select(this.n, this.pool.map((die) => die.max()));
-        return maxima.max();
+        let maxima = this.select_rolls(this.n, this.pool.map((die) => new DieResult(die.max(), die)));
+        return new DiceResult(maxima, this).sum();
     }
 
     roll() {
-        return new DiceResult(this.select(this.n, this.pool.map(die => die.roll())), this);
+        let roll = this.pool.map(die => die.roll());
+        return new DiceResult(this.select_rolls(this.n, roll), this);
     }
 
     all_events(){
-        let each_events = this.pool.map((die) => { return die.all_events(); });
-        let events = [];
+        let events = [...Array(this.max() + 1).keys()].map(i => 0);
 
-        function recurse(i, r, select) {
-            if(i < each_events.length) {
-                each_events[i].forEach((v) => { recurse(i + 1, [...r, v], select); });
-            } else {
-                events.push(select(r).reduce((a, b) => a + b, 0));
+        let N = this.pool.map((die) => die.max()).reduce((a, b) => a * b, 1);
+
+        if(N < 10000) {
+            let each_events = this.pool.map((die) => {
+                return die.all_events();
+            });
+
+            function recurse(i, rx, select) {
+                if (i < each_events.length) {
+                    each_events[i].keys().forEach((k) => {
+                        if (each_events[i][k] > 0) recurse(i + 1, [...rx, [k, each_events[i][k]]], select);
+                    });
+                } else {
+                    let selected = select(rx);
+                    events[selected.reduce((a, b) => a + b[0], 0)] += selected.reduce((a, b) => a * b[1], 1);
+                }
+            }
+
+            recurse(0, [], (seq) => {
+                return this.select_events(this.n, seq);
+            });
+        } else {
+            console.log(`N=${N}, use a statistical approach`);
+
+            for(let i = 0; i < 10000; i++) {
+                let roll = this.roll();
+                events[roll.sum()] += 1;
             }
         }
-
-        recurse(0, [], (seq) => {return this.select(this.n, seq);});
 
         return events;
     }
@@ -412,10 +459,12 @@ export class SubPool extends Pool {
 
 export class BestOfPool extends SubPool {
     constructor(pool, n) {
-        super(pool, n, (n, seq) => {
-            seq.sort((a, b) => (b instanceof DieResult || b instanceof DiceResult) ? (b.sum() - a.sum()) : (b - a));
-            return seq.slice(0, n);
-        });
+        super(
+            pool,
+            n,
+            (n, seq) => { seq.sort((a, b) => b.sum() - a.sum()); return seq.slice(0, n); },
+            (n, seq) => { seq.sort((a, b) => b[0] - a[0]); return seq.slice(0, n); }
+        );
     }
 
     repr() {
@@ -429,10 +478,12 @@ export class BestOfPool extends SubPool {
 
 export class WorstOfPool extends SubPool {
     constructor(pool, n) {
-        super(pool, n, (n, seq) => {
-            seq.sort((a, b) => (b instanceof DieResult || b instanceof DiceResult) ? (a.sum() - b.sum()) : (a - b));
-            return seq.slice(0, n);
-        });
+        super(
+            pool,
+            n,
+            (n, seq) => { seq.sort((a, b) => a.sum() - b.sum()); return seq.slice(0, n); },
+            (n, seq) => { seq.sort((a, b) => a[0] - b[0]); return seq.slice(0, n); }
+        );
     }
 
     repr() {
