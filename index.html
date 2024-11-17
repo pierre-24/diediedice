@@ -38,10 +38,72 @@
                 <div class="blk" id="dice-input-form">
                     <h2>Your dice</h2>
                     <div class="input-group mb-3">
-                        <label class="input-group-text" for="dice-input">Definition</label>
-                        <input class="form-control" type="text" id="dice-input" data-ddd-target="input" placeholder="example: 1d6" data-action="keyup->ddd#changeInput keydown.enter->ddd#roll">
-                        <input class="btn btn-outline-secondary"  type="button" value="roll!" data-ddd-target="roll" data-action="click->ddd#roll">
+                        <label class="input-group-text" for="dice-input">Definition (<a class="highlight" data-bs-toggle="modal" data-bs-target="#helpModal">how?</a>)</label>
+
+                        <input class="form-control" type="text" id="dice-input" data-ddd-target="input" placeholder="example: d6" data-action="keyup->ddd#changeInput keydown.enter->ddd#roll">
+
+                        <input class="btn btn-primary" type="button" value="roll!" data-ddd-target="roll" data-action="click->ddd#roll">
                     </div>
+
+                    <!-- Modal -->
+                    <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="exampleModalLabel">Help</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Basic Instructions:</strong></p>
+                                    <ul>
+                                        <li>
+                                            Define a die with <code>dX</code>, where <code>X</code> is the maximum value of your die.
+                                            For example: <code>d6</code>, <code>d20</code>, etc.
+                                        </li>
+                                        <li>
+                                            Define a set of dice using <code>+</code>.
+                                            For example, <code>d12+d6</code> defines a <code>d12</code> and a <code>d6</code> that will be rolled together.
+                                        </li>
+                                        <li>
+                                            Use <code>NdX</code> as a shortcut to roll the same die multiple times, where <code>N</code> is the number of dice.
+                                            For example, <code>3d6+2d12</code> is equivalent to <code>d6+d6+d6+d12+d12</code>.
+                                        </li>
+                                        <li>
+                                            Add a modifier (constant) by using <code>+X</code>.
+                                            For example, <code>d6+3</code> adds 3 to any result of the <code>d6</code>.
+                                        </li>
+                                    </ul>
+                                    <p><strong>When ready:</strong> If your input is valid, just hit "roll" and you'll get a result! 😊</p>
+                                    <hr>
+                                    <p><strong>Advanced Usages:</strong></p>
+                                    <ul>
+                                        <li>
+                                            Spaces are ignored, so <code>d6 + d12</code> is equivalent to <code>d6+d12</code>.
+                                        </li>
+                                        <li>
+                                            An exploding die (a die that is rerolled when it reaches its maximum value) is defined by <code>dX!E</code>, where <code>E</code> is the maximum number of rolls.
+                                            For example, <code>d6!2</code> represents a <code>d6</code> that can be rerolled once (for a maximum value of 12).
+                                            If <code>E</code> is omitted, it defaults to 3. For instance, <code>d12!</code> is a <code>d12</code> that can be rerolled twice when reaching its maximum value.
+                                        </li>
+                                        <li>
+                                            To select the <code>Q</code> best dice rolls, use <code>bQo(dice)</code>.
+                                            For example, <code>b2o(3d6)</code> selects the two best rolls from <code>3d6</code>.
+                                            If <code>Q</code> is omitted, it defaults to 1. For instance, <code>bo(2d12)</code> selects the best roll from <code>2d12</code>.
+                                            Note: <code>Q</code> must be smaller than the total number of dice.
+                                        </li>
+                                        <li>
+                                            You can also select the worst <code>Q</code> dice rolls using <code>wQo(dice)</code>.
+                                        </li>
+                                        <li>
+                                            Any text following a <code>;</code> is ignored.
+                                            This can be useful for adding notes or explanations in the roll history.
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="history" data-ddd-target="history"></div>
                 </div>
 
